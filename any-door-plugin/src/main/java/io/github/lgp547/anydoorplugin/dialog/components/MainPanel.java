@@ -24,6 +24,7 @@ import io.github.lgp547.anydoorplugin.dialog.utils.JavaFileInfoUtil;
 import io.github.lgp547.anydoorplugin.util.JsonUtil;
 import io.github.lgp547.anydoorplugin.util.NotifierUtil;
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * @description:
@@ -42,13 +43,17 @@ public class MainPanel extends JBPanel<MainPanel> implements Listener {
     private final JBCheckBox isConcurrent;
 
     public MainPanel(Project project, MethodDataContext context) {
+        this(project, context, null);
+    }
+
+    public MainPanel(Project project, MethodDataContext context, @Nullable Integer initialPid) {
         super(new GridBagLayout());
         setPreferredSize(new JBDimension(670, 500));
 
         this.project = project;
         this.context = context;
 
-        toolBar = new MyToolBar(project, context);
+        toolBar = new MyToolBar(project, context, initialPid);
         editor = new MyEditor(context, context.getSelectedItem().getParam(), context.getParamList(), project);
 //        comboBox = new MyComboBox(project, context);
 //        saveParamButton = new JButton("Save");

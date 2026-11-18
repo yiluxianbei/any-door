@@ -19,6 +19,10 @@ public class TextAreaDialog extends DialogWrapper {
     private Runnable okAction;
 
     public TextAreaDialog(Project project, String title, PsiParameterList psiParameterList, ParamCacheDto paramCacheDto, AnyDoorSettingsState service) {
+        this(project, title, psiParameterList, paramCacheDto, service, null);
+    }
+
+    public TextAreaDialog(Project project, String title, PsiParameterList psiParameterList, ParamCacheDto paramCacheDto, AnyDoorSettingsState service, @Nullable Long initialPid) {
         super(project, true, IdeModalityType.MODELESS);
         setTitle(title);
         this.service = service;
@@ -31,7 +35,7 @@ public class TextAreaDialog extends DialogWrapper {
         contentPanel.addQueryToJsonButtonListener(e -> textArea.queryToJson());
         contentPanel.initRunNum(paramCacheDto.getRunNum());
         contentPanel.initIsConcurrent(paramCacheDto.getConcurrent());
-        contentPanel.initPid(service.pid);
+        contentPanel.initPid(initialPid != null ? initialPid : (service.pid == null ? -1 : service.pid));
 
         init();
     }

@@ -63,6 +63,7 @@
                              id="io.github.lgp547.anydoorplugin.settings.AnyDoorSettingsConfigurable"
                              displayName="Any Door" nonDefaultProject="true"/>
         <projectService serviceImplementation="io.github.lgp547.anydoorplugin.settings.AnyDoorSettingsState"/>
+        <projectService serviceImplementation="io.github.lgp547.anydoorplugin.service.RunningServiceRegistry"/>
 
         <!-- Add your extensions here -->
         <!-- 配置 File -> Settings -> Tools -->

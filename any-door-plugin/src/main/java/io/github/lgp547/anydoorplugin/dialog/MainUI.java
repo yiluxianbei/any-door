@@ -30,15 +30,22 @@ public class MainUI extends DialogWrapper implements Listener {
 
     private final MethodDataContext context;
 
+    private final Integer initialPid;
+
     private MainPanel panel;
 
     private Consumer<String> okAction;
 
     public MainUI(String title, Project project, MethodDataContext context) {
+        this(title, project, context, null);
+    }
+
+    public MainUI(String title, Project project, MethodDataContext context, @Nullable Integer initialPid) {
         super(project, true, IdeModalityType.MODELESS);
         setTitle(title);
         this.project = project;
         this.context = context;
+        this.initialPid = initialPid;
 
         buttonSettings();
 
@@ -72,7 +79,7 @@ public class MainUI extends DialogWrapper implements Listener {
 
     @Override
     protected @Nullable JComponent createCenterPanel() {
-        panel = new MainPanel(project, context);
+        panel = new MainPanel(project, context, initialPid);
         return panel;
     }
 

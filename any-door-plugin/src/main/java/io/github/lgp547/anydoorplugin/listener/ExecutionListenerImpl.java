@@ -1,53 +1,89 @@
 package io.github.lgp547.anydoorplugin.listener;
 
 import com.intellij.execution.ExecutionListener;
-import com.intellij.execution.process.KillableColoredProcessHandler;
+import com.intellij.execution.application.ApplicationConfiguration;
+import com.intellij.execution.process.OSProcessHandler;
 import com.intellij.execution.process.ProcessHandler;
 import com.intellij.execution.runners.ExecutionEnvironment;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.projectRoots.Sdk;
-import com.intellij.openapi.roots.ProjectRootManager;
-import io.github.lgp547.anydoorplugin.settings.AnyDoorSettingsState;
-import io.github.lgp547.anydoorplugin.util.NotifierUtil;
-import io.github.lgp547.anydoorplugin.util.RuntimeUtil;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
+import io.github.lgp547.anydoorplugin.service.RunningServiceRegistry;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+/**
+ * 登记 IDEA 内运行中的 Application/Spring Boot 实例，并按 executionId 在进程结束时移除。
+ * 用于打开 AnyDoor 时按「方法所在服务」自动定位 pid。
+ */
 public class ExecutionListenerImpl implements ExecutionListener {
 
     private static final Logger log = Logger.getInstance(ExecutionListenerImpl.class);
 
     @Override
     public void processStarting(@NotNull String executorId, @NotNull ExecutionEnvironment env, @NotNull ProcessHandler handler) {
-        fillRunProjectPid(env, handler);
+        registerRunningService(env, handler);
     }
 
-    private void fillRunProjectPid(@NotNull ExecutionEnvironment env, @NotNull ProcessHandler handler) {
-        Project project = env.getProject();
+    @Override
+    public void processTerminated(@NotNull String executorId, @NotNull ExecutionEnvironment env, @NotNull ProcessHandler handler, int exitCode) {
+        removeRunningService(env);
+    }
+
+    @Override
+    public void processNotStarted(@NotNull String executorId, @NotNull ExecutionEnvironment env) {
+        removeRunningService(env);
+    }
+
+    @Override
+    public void processNotStarted(@NotNull String executorId, @NotNull ExecutionEnvironment env, @Nullable Throwable cause) {
+        removeRunningService(env);
+    }
+
+    private void registerRunningService(@NotNull ExecutionEnvironment env, @NotNull ProcessHandler handler) {
         try {
-            String runClassName = env.getRunProfile().getClass().getName();
-            if (!StringUtils.endsWith(runClassName, "SpringBootApplicationRunConfiguration") && !StringUtils.endsWithIgnoreCase(runClassName, "ApplicationConfiguration")) {
-                log.debug("fillRunProjectPid runClassName is not match {}", runClassName);
+            if (!(env.getRunProfile() instanceof ApplicationConfiguration configuration)) {
                 return;
             }
-            AnyDoorSettingsState anyDoorSettingsState = AnyDoorSettingsState.getAnyDoorSettingsState(project);
-            if (handler instanceof KillableColoredProcessHandler.Silent) {
-                anyDoorSettingsState.pid = ((KillableColoredProcessHandler.Silent) handler).getProcess().pid();
-            } else {
-                log.debug("fillRunProjectPid !handler instanceof KillableColoredProcessHandler.Silent");
-                // jps
-                String basePath = "";
-                Sdk projectSdk = ProjectRootManager.getInstance(project).getProjectSdk();
-                if (null != projectSdk) {
-                    basePath = projectSdk.getHomePath() + "/bin/";
-                }
-                String projectPid = RuntimeUtil.getProjectPid(basePath, env.getRunProfile().getName());
-                anyDoorSettingsState.pid = NumberUtils.toLong(projectPid);
+            Long pid = getPid(handler);
+            if (pid == null) {
+                log.debug("registerRunningService can not get pid, handler: {}", handler.getClass().getName());
+                return;
             }
+            Module module = configuration.getConfigurationModule().getModule();
+            Project project = env.getProject();
+            RunningServiceRegistry.getInstance(project).register(new RunningServiceRegistry.RunningService(
+                    env.getExecutionId(),
+                    pid,
+                    configuration.getName(),
+                    module == null ? null : module.getName(),
+                    configuration.getMainClassName()
+            ));
         } catch (Exception e) {
-            NotifierUtil.notifyError(project, "fill run project pid fail: " + e.getMessage());
+            log.warn("registerRunningService error", e);
         }
+    }
+
+    private void removeRunningService(@NotNull ExecutionEnvironment env) {
+        try {
+            Project project = env.getProject();
+            if (project.isDisposed()) {
+                return;
+            }
+            RunningServiceRegistry.getInstance(project).remove(env.getExecutionId());
+        } catch (Exception e) {
+            log.debug("removeRunningService error", e);
+        }
+    }
+
+    @Nullable
+    private static Long getPid(@NotNull ProcessHandler handler) {
+        if (handler instanceof OSProcessHandler osProcessHandler) {
+            Process process = osProcessHandler.getProcess();
+            if (process != null) {
+                return process.pid();
+            }
+        }
+        return null;
     }
 }

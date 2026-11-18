@@ -15,6 +15,7 @@ import io.github.lgp547.anydoorplugin.dialog.event.impl.AddDataItemEvent;
 import io.github.lgp547.anydoorplugin.dialog.utils.EventHelper;
 import io.github.lgp547.anydoorplugin.settings.AnyDoorSettingsState;
 import io.github.lgp547.anydoorplugin.util.AnyDoorIcons;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * @description:
@@ -29,6 +30,10 @@ public class MyToolBar extends CustomToolbar {
     private Integer initPid;
 
     public MyToolBar(Project project, Multicaster multicaster) {
+        this(project, multicaster, null);
+    }
+
+    public MyToolBar(Project project, Multicaster multicaster, @Nullable Integer initialPid) {
         super();
         this.project = project;
         this.multicaster = multicaster;
@@ -37,7 +42,7 @@ public class MyToolBar extends CustomToolbar {
 
         initButtons();
 
-        initPid = AnyDoorSettingsState.getAnyDoorSettingsState(project).pid.intValue();
+        initPid = initialPid != null ? initialPid : settingsPid(project);
         pidSpinner = new JBIntSpinner(initPid, -1, Integer.MAX_VALUE);
         JFormattedTextField textField = ((JSpinner.DefaultEditor) pidSpinner.getEditor()).getTextField();
         textField.setColumns(7); // 设置输入框的宽度为10个字符
@@ -47,6 +52,11 @@ public class MyToolBar extends CustomToolbar {
         super.add(pidSpinner);
 
 
+    }
+
+    private static int settingsPid(Project project) {
+        Long pid = AnyDoorSettingsState.getAnyDoorSettingsState(project).pid;
+        return pid == null ? -1 : pid.intValue();
     }
 
     private void initButtons() {
